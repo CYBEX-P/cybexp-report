@@ -1,0 +1,8 @@
+{
+    "mongo": { 
+        "mongo_url" : "mongodb://localhost:27017/",
+        "cache_db" : "cache_db",
+        "report_db" : "report_db",
+        "identity_db" : "identity_db"
+  }
+}
