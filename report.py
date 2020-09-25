@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 from collections import defaultdict
-
 from dateutil.parser import parse as parse_time
 import io
 import logging
@@ -21,6 +20,7 @@ from tahoe.misc import decanonical
 
 import loadconfig
 
+
 ### Logging
 logging.basicConfig(filename = 'report.log') 
 logging.basicConfig(
@@ -35,6 +35,7 @@ _CONF_FNAME = 'config.json'
 _API_URL, _API_HOST, _API_PORT, _API_PROTO = loadconfig.get_api(_CONF_FNAME)
 _REPORT_BACKEND = loadconfig.get_report_backend(_CONF_FNAME)
 Instance._backend = loadconfig.get_tahoe_backend(_CONF_FNAME)
+
 
 def get_dtrange(from_=None, to=None, last=None, tzname=None):
 
@@ -225,6 +226,7 @@ while True:
         port = _socket['port'][0]
         nonce = _socket['nonce'][0] 
         
+
         if host in ['0.0.0.0', '127.0.0.1', 'localhost']:
             host = _API_HOST
 
