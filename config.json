@@ -24,33 +24,5 @@
         "mongo_url": "mongodb://mongo1,mongo2,mongo2:27020/?replicaSet=rs0",
         "db": "tahoe_db",
         "coll": "instance"
-    },
-    
-    demo : {
-      "api" : {
-          "url" : "http://localhost:5000/",
-          "host" : "127.0.0.1",
-          "port" : 5000,
-          "protocol" : "http"
-      },  
-      "cache" : {
-          "mongo_url" : "mongodb://localhost:27017/",
-          "db" : "cache_db",
-          "coll": "file_entries"
-      },
-      "identity" : {
-          "mongo_url" : "mongodb://localhost:27017/",
-          "idenity_db" : "identity_db",
-          "coll": "instance"
-      },
-      "report" : {
-          "mongo_url" : "mongodb://localhost:27017/",
-          "db" : "report_db",
-          "coll": "instance"
-      },
-      "tahoe": {
-          "mongo_url": "mongodb://localhost:27017/",
-          "db": "tahoe_db",
-          "coll": "instance"
     }
 }

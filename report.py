@@ -15,14 +15,14 @@ import time
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES, PKCS1_OAEP
 
-from tahoe import Instance, Attribute, Object, Event, Raw, parse
+from tahoe import Instance, Attribute, Object, Event, Raw, Report, parse
 from tahoe.misc import decanonical
 
 import loadconfig
 
 
 ### Logging
-logging.basicConfig(filename = 'report.log') 
+##logging.basicConfig(filename = 'report.log') 
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s %(levelname)s %(filename)s:%(lineno)s' \
@@ -30,8 +30,10 @@ logging.basicConfig(
     )
 
 
+
 _CONF_FNAME = 'config.json'
 
+_P = {'_id':0}
 _API_URL, _API_HOST, _API_PORT, _API_PROTO = loadconfig.get_api(_CONF_FNAME)
 _REPORT_BACKEND = loadconfig.get_report_backend(_CONF_FNAME)
 Instance._backend = loadconfig.get_tahoe_backend(_CONF_FNAME)
@@ -121,26 +123,20 @@ def decrypt_file(file_in, fpriv_name="priv.pem"):
 
 
 while True:
+    await_hash = '64d6f946a875d0fc05774ef1e1fe4eaa4b2f1700c71df' \
+                 '9a1bb33b0c0cfcbad89'
     
-    r = _REPORT_BACKEND.find({'itype': 'object',
-                              'sub_type': 'query',
-                              'data.status': 'wait'})
+    r = _REPORT_BACKEND.find({'itype': 'object', 'sub_type': 'query',
+                              '_cref': await_hash}, _P)
 
-    orgid = "a441b15fe9a3cf56661190a0b93b9dec7d04127288cc87250967cf3b52894d11"
-
+    orgid = "a441b15fe9a3cf56661190a0b93b9dec7d04127288cc872509" \
+            "67cf3b52894d11"
+    
     for i in r:
-        _REPORT_BACKEND.update_one(
-                {'_hash': i['_hash']},
-                {
-                    '$set': {
-                        'status': 'wait'
-                        }
-                }
-            )
-
-        query_type = i['data']['type'][0]
+        tdql = parse(i, backend=_REPORT_BACKEND)
+        tdql.status = 'processing'
         
-        ciphertext_query = eval(i['data']['data'][0])
+        ciphertext_query = eval(tdql.qdata)
         canonical_query = decrypt_file(ciphertext_query)
         query = decanonical(canonical_query)
      
@@ -161,17 +157,17 @@ while True:
         return_type = query.pop('return_type', 'all')
 
         try:
-            if query_type == 'count':
+            if tdql.qtype == 'count':
                 sub_type = query['sub_type']
                 data = query['data']
                 a = Attribute(sub_type, data)
                 
                 count = a.count(start=start, end=end,
                                 category=category, context=context)
-                rep = Object('report', [Attribute('count', count)],
+                rep = Report(tdql.qtype, tdql.userid, tdql.timestamp, count,
                              _backend=_REPORT_BACKEND)
                 
-            elif query_type == 'related':
+            elif tdql.qtype == 'related':
                 sub_type = query['sub_type']
                 data = query['data']
                 a = Attribute(sub_type, data)
@@ -183,17 +179,18 @@ while True:
                                             start=start, end=end, page=page)
 
                 if summary:
-                    rep = defaultdict(list)
+                    rel = defaultdict(list)
                     for a in r:
                         if a['itype'] != 'attribute':
                             continue
-                        rep[a['sub_type']].append(a['data'])
-                    rep = dict(rep)
+                        rel[a['sub_type']].append(a['data'])
+                    rel = dict(rel)
                 else:
-                    rep = r
-                rep = Raw('report', rep, orgid, _backend=_REPORT_BACKEND)
+                    rel = r
+                rep = Report(tdql.qtype, tdql.userid, tdql.timestamp,
+                             rel, curpg, nxtpg, _backend=_REPORT_BACKEND)
 
-            elif query_type == 'threatrank':
+            elif tdql.qtype == 'threatrank':
                 itype = query['itype']
                 _hash = query['hash']
                 e = Instance._backend.find_one({'_hash': _hash}, {'_id': 0})
@@ -209,35 +206,37 @@ while True:
                          Attribute('error', 'invalid query')],
                         _backend=_REPORT_BACKEND)
                 query.status = 'failed'
+        
+
+            tdql.status = 'ready'
+            tdql.report_id = rep._hash
+                
+            _socket =  i['data']['socket'][0]
+            host = _socket['host'][0]
+            port = _socket['port'][0]
+            nonce = _socket['nonce'][0] 
+            
+
+            if host in ['0.0.0.0', '127.0.0.1', 'localhost']:
+                host = _API_HOST
+
+            sock = socket.socket()
+            try:
+                sock.connect((host, port))
+                if not isinstance(nonce, bytes):
+                    nonce = nonce.encode()
+                sock.send(nonce)
+            except (ConnectionRefusedError, OSError):
+                pass
+
         except Exception as e:
             rep = Object('report',
                         [Attribute('status', 'error'),
-                         Attribute('error', 'invalid query')],
+                         Attribute('error', 'report server error')],
                         _backend=_REPORT_BACKEND)
 
-            logging.error(f"Report generation failed {i[_hash]}", exc_info=True)
-            query.status = 'failed'
-
-        query.status = 'ready'
-        query.report_id = rep._hash
-            
-        _socket =  i['data']['socket'][0]
-        host = _socket['host'][0]
-        port = _socket['port'][0]
-        nonce = _socket['nonce'][0] 
-        
-
-        if host in ['0.0.0.0', '127.0.0.1', 'localhost']:
-            host = _API_HOST
-
-        sock = socket.socket()
-        try:
-            sock.connect((host, port))
-            if not isinstance(nonce, bytes):
-                nonce = nonce.encode()
-            sock.send(nonce)
-        except (ConnectionRefusedError, OSError):
-            pass
+            logging.error(f"Report failed {i['_hash']}", exc_info=True)
+            tdql.status = 'failed'
 
 
         # maintain running average of query for priority queue and return

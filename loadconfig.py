@@ -74,7 +74,8 @@ def get_config(filename='config.json', db='all'):
     update(config, default)
 
     if db != 'all':
-        if db not in ('archive', 'cache', 'identity', 'report', 'tahoe'):
+        if db not in ('api', 'archive', 'cache', 'identity',
+                      'report', 'tahoe'):
             logging.error(f"Invalid db name '{db}'!", exc_info=True)
             sys.exit(1)
 
@@ -123,6 +124,13 @@ def get_tahoe_backend(filename='config.json'):
     return get_backend(filename, db='tahoe')
 
 
+def get_identity_backend(filename='config.json', db='tahoe'):
+    identityconfig = get_config(filename, db)
+    mongo_url = identityconfig['mongo_url']
+    dbname = identityconfig['db']
+    collname = identityconfig['coll']
+    backend = tahoe.identity.IdentityBackend(mongo_url, dbname, collname)
+    return backend
 
 
 
