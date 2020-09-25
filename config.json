@@ -1,8 +1,22 @@
 {
-    "mongo": { 
-        "mongo_url" : "mongodb://localhost:27017/",
-        "cache_db" : "cache_db",
-        "report_db" : "report_db",
-        "identity_db" : "identity_db"
-  }
+    "cache" : {
+        "mongo_url" : "mongodb://cici-api/",
+        "db" : "cache_db",
+        "coll": "file_entries"
+    },
+    "report" : {
+        "mongo_url" : "mongodb://cici-api/",
+        "db" : "report_db",
+        "coll": "instance"
+    },
+    "identity" : {
+        "mongo_url" : "mongodb://cici-api/",
+        "idenity_db" : "identity_db",
+        "coll": "instance"
+    },
+    "tahoe": {
+        "mongo_url": "mongodb://mongo1,mongo2,mongo2:27020/?replicaSet=rs0",
+        "db": "tahoe_db",
+        "coll": "instance"
+    }
 }
