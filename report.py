@@ -40,7 +40,6 @@ Instance._backend = loadconfig.get_tahoe_backend(_CONF_FNAME)
 
 
 def get_dtrange(from_=None, to=None, last=None, tzname=None):
-
     start = 0.0
     end = time.time()
     dtreq = False
@@ -100,6 +99,22 @@ def get_dtrange(from_=None, to=None, last=None, tzname=None):
 
 
 def decrypt_file(file_in, fpriv_name="priv.pem"):
+    """
+    decrypts the cipher text query. Checks to make sure the that the instance of the passed file is 
+    in the correct format of byte values. A path to the private name file is opened and the private key
+    is then pulled from there. The session key, nonce, tag, and cipher text are then pulled from the
+    passed 'file_in'. The query is then decrypted with the privatte RSA and AES session keys. The data
+    is then returned via a utf-8 decode.
+
+    Parameters
+    ---------
+    file_in: bytes value of integers
+        the encrypted query data
+    fpive_name: String
+        RSA private key
+    
+    
+    """
     if isinstance(file_in, bytes):
         file_in = io.BytesIO(file_in)
 
