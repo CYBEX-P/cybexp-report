@@ -157,18 +157,26 @@ while True:
         return_type = query.pop('return_type', 'all')
 
         try:
+            # Count
             if tdql.qtype == 'count':
                 sub_type = query['sub_type']
+                if sub_type == 'ip':  # quick fix
+                    sub_type = 'ipv4'
+
                 data = query['data']
-                a = Attribute(sub_type, data)
+                a = Attribute(sub_type, data) 
                 
-                count = a.count(start=start, end=end,
-                                category=category, context=context)
+                count = a.count(start=start, end=end, category=category,
+                                context=context, limit=1000)
                 rep = Report(tdql.qtype, tdql.userid, tdql.timestamp, count,
                              _backend=_REPORT_BACKEND)
-                
+
+            # Related
             elif tdql.qtype == 'related':
                 sub_type = query['sub_type']
+                if sub_type == 'ip':  # quick fix
+                    sub_type = 'ipv4'
+                    
                 data = query['data']
                 a = Attribute(sub_type, data)
 
@@ -190,6 +198,7 @@ while True:
                 rep = Report(tdql.qtype, tdql.userid, tdql.timestamp,
                              rel, curpg, nxtpg, _backend=_REPORT_BACKEND)
 
+            # ThreatRank
             elif tdql.qtype == 'threatrank':
                 itype = query['itype']
                 _hash = query['hash']

@@ -2,6 +2,7 @@
 *.bat
 *playpen.py
 *.ini
+priv.pem
 Rubbish/
 
 # ================ Data/Log Files ================

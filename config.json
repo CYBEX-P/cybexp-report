@@ -6,12 +6,12 @@
         "protocol" : "http"
     },   
     "cache" : {
-        "mongo_url" : "mongodb://cici-api/",
+        "mongo_url" : "mongodb://mongo1,mongo2,mongo2:27020/?replicaSet=rs0",
         "db" : "cache_db",
         "coll": "file_entries"
     },
     "report" : {
-        "mongo_url" : "mongodb://cici-api/",
+        "mongo_url" : "mongodb://mongo1,mongo2,mongo2:27020/?replicaSet=rs0",
         "db" : "report_db",
         "coll": "instance"
     },

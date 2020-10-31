@@ -51,7 +51,7 @@ def update(d, u):
     for k, v in u.items():
         if isinstance(v, collections.abc.Mapping):
             d[k] = update(d.get(k, {}), v)
-        else:
+        elif k not in d:
             d[k] = v
     return d
 
@@ -124,7 +124,7 @@ def get_tahoe_backend(filename='config.json'):
     return get_backend(filename, db='tahoe')
 
 
-def get_identity_backend(filename='config.json', db='tahoe'):
+def get_identity_backend(filename='config.json', db='identity'):
     identityconfig = get_config(filename, db)
     mongo_url = identityconfig['mongo_url']
     dbname = identityconfig['db']
