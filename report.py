@@ -21,8 +21,8 @@ from tahoe.misc import decanonical
 import loadconfig
 
 
-### Logging
-##logging.basicConfig(filename = 'report.log') 
+# Logging
+logging.basicConfig(filename = 'report.log') 
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s %(levelname)s %(filename)s:%(lineno)s' \
@@ -133,6 +133,7 @@ while True:
             "67cf3b52894d11"
     
     for i in r:
+        
         tdql = parse(i, backend=_REPORT_BACKEND)
         tdql.status = 'processing'
         
