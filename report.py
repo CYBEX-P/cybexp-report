@@ -84,7 +84,7 @@ def get_dtrange(from_=None, to=None, last=None, tzname=None):
         
         try:
             sec = int(i)*spu[m]
-        except KeyError:
+        except:
             raise InvalidParameterValue(f"Invalid 'last'={last}!")
         else:
             return sec
