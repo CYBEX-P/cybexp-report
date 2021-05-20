@@ -1,4 +1,9 @@
-"""Read config.json file and initialize database or Tahoe Backend."""
+"""
+Functions to initilize tahoe backends, initilize cache DB
+and parse api config.
+
+Updated: 5/19/2021 05:39
+"""
 
 import collections.abc
 import gridfs
@@ -15,8 +20,15 @@ import tahoe
 default = {
     "analytics": { 
         "mongo_url": "mongodb://localhost:27017/",
-        "db": "analytics_db",
+        "db": "tahoe_db",
         "coll": "instance",
+    },
+    "api": {
+        "url": "http://localhost:5000/",
+        "host" : "localhost",
+        "port" : 5000,
+        "protocol": "http",
+        "token": ""
     },
     "archive": { 
         "mongo_url": "mongodb://localhost:27017/",
@@ -46,7 +58,7 @@ default = {
 }
 
 def update(d, u):
-    "Recursively update nested dictionary."
+    "Recursively update nested dictionary `d` with items of `u`."
     
     for k, v in u.items():
         if isinstance(v, collections.abc.Mapping):
@@ -57,21 +69,37 @@ def update(d, u):
 
 
 def get_config(filename='config.json', db='all'):
-    """Read config from file `config.json`."""
+    """Read and parse config from config file."""
   
     try:
-        this_dir = os.path.dirname(__file__)
-        filename = os.path.join(this_dir, filename)
+        """This block succeeds if `filename` is valid absolute path"""
         with open(filename, 'r') as f:
             config = json.load(f)
     except FileNotFoundError:
-        config = default
-        logging.warning("No config file found, using default config")
+        try:
+            """This block succeeds if `filename` is valid relative path"""
+            this_dir = os.path.dirname(__file__)
+            filename = os.path.join(this_dir, filename)
+            with open(filename, 'r') as f:
+                config = json.load(f)
+        except FileNotFoundError:
+            """`filename` is not valid"""
+            config = default
+            logging.warning("No config file found, using default config!")
+        except json.decoder.JSONDecodeError:
+            logging.error(f"Bad config file: {filename}", exc_info=True)
+            sys.exit(1)  # 1 = error in linux
     except json.decoder.JSONDecodeError:
-        logging.error("Bad configuration file!", exc_info=True)
+        logging.error(f"Bad config file: {filename}", exc_info=True)
         sys.exit(1)  # 1 = error in linux
 
     update(config, default)
+    """
+    Updates the input config file with default values.
+
+    e.g. If only `mongo_url` is given for `archive`
+    then it is assumed that `db = tahoe_db, coll = instance`.
+    """
 
     if db != 'all':
         if db not in ('api', 'archive', 'cache', 'identity',
@@ -84,13 +112,52 @@ def get_config(filename='config.json', db='all'):
     return config
 
 
-def get_api(filename='config.json'):
-    apiconfig = get_config(filename, 'api')
-    return apiconfig['url'], apiconfig['host'], \
-           apiconfig['host'], apiconfig['port']
+def get_api_config(filename='config.json'):
+    """
+    Get API config from config file.
+
+    Parameters
+    ----------
+    filename : str
+        Relative or absolute path of config file.
+
+    Returns
+    -------
+    apiconfig : dict
+        Contains the following keys.
+    host : str
+        Hostname of the api (e.g. `localhost`).
+    protocol : str
+        http or https.
+    token : str
+        JWT token to authenticate with the API.
+    url : str
+        Complete URL of the API like `protocol://host:port`.    
+    """
+        
+    api_config = get_config(filename, 'api')
+    return api_config
 
 
 def get_cache_db(filename='config.json'):
+    """
+    Get Cache DB config from config file.
+
+    Parameters
+    ----------
+    filename : str
+        Relative or absolute path of config file.
+
+    Returns
+    -------
+    coll : pymongo.collection.Collection
+        Stores pointer to raw files and some meta info.
+        Lookup pymongo collection to know more.
+    fs : gridfs.GridFS
+        Stores the actual raw files.
+        Lookup pymongo gridfs to know more.
+    """
+     
     cacheconfig = get_config(filename, 'cache')
     mongo_url = cacheconfig['mongo_url']
     dbname = cacheconfig['db']
@@ -103,34 +170,178 @@ def get_cache_db(filename='config.json'):
 
     return coll, fs
 
-def get_backend(filename='config.json', db='tahoe'):
-    reportconfig = get_config(filename, db)
-    mongo_url = reportconfig['mongo_url']
-    dbname = reportconfig['db']
-    collname = reportconfig['coll']
+def _get_backend(filename='config.json', db='tahoe'):
+    """
+    Get analytics/archive/report/tahoe backend.
+
+    This function is used by other functions below.
+
+    Parameters
+    ----------
+    filename : str
+        Relative or absolute path of config file.
+    db : {"analytics", "archive", "report", "tahoe"}, default="tahoe"
+        
+
+    Returns
+    -------
+    coll : pymongo.collection.Collection
+        Stores pointer to raw files and some meta info.
+        Lookup pymongo collection to know more.
+    fs : gridfs.GridFS
+        Stores the actual raw files.
+        Lookup pymongo gridfs to know more.
+    """
+
+    if db not in {"analytics", "archive", "report", "tahoe"}:
+        raise ValueError(f"Invalid db name: {db}")
+    
+    config = get_config(filename, db)
+    mongo_url = config['mongo_url']
+    dbname = config['db']
+    collname = config['coll']
     backend = tahoe.MongoBackend(mongo_url, dbname, collname)
     return backend
 
 def get_analytics_backend(filename='config.json'):
-    return get_backend(filename, db='analytics')
+    """
+    Get archive/analytics/tahoe backend.
+
+    Archive DB is the main storage of CYBEX-P. Use a tahoe_backend
+    object to interact with the archive DB. tahoe_backend is
+    also known as analytics_backend and archive_backend. So it is
+    important that the have the same URL in the config file. See
+    the CYBEX-P system architecture diagram to know more about
+    archive DB.
+
+    Parameters
+    ----------
+    filename : str
+        Relative or absolute path of config file.
+        
+
+    Returns
+    -------
+    backend : tahoe.backend.MongoBackend
+        Data storage. Inherits pymongo.Collection and
+        tahoe.Backend. Use an instance of this class to interact
+        with the archive/tahoe/analytics/report db.
+    """
+    
+    return _get_backend(filename, db='analytics')
 
 def get_archive_backend(filename='config.json'):
-    return get_backend(filename, db='archive')
+    """
+    Get archive/analytics/tahoe backend.
+
+    Archive DB is the main storage of CYBEX-P. Use a tahoe_backend
+    object to interact with the archive DB. tahoe_backend is
+    also known as analytics_backend and archive_backend. So it is
+    important that the have the same URL in the config file. See
+    the CYBEX-P system architecture diagram to know more about
+    archive DB.
+
+    Parameters
+    ----------
+    filename : str
+        Relative or absolute path of config file.
+        
+
+    Returns
+    -------
+    backend : tahoe.backend.MongoBackend
+        Data storage. Inherits pymongo.Collection and
+        tahoe.Backend. Use an instance of this class to interact
+        with the archive/tahoe/analytics/report db.
+    """
+        
+    return _get_backend(filename, db='archive')
 
 def get_report_backend(filename='config.json'):
-    return get_backend(filename, db='report')
+    """
+    Get report backend.
+
+    Report DB stores anonymized reports. Use a report_backend
+    object to interact with the report DB. See the CYBEX-P system
+    architecture diagram to know more about report DB.
+
+    Parameters
+    ----------
+    filename : str
+        Relative or absolute path of config file.
+
+    Returns
+    -------
+    backend : tahoe.backend.MongoBackend
+        Data storage. Inherits pymongo.Collection and
+        tahoe.Backend. Use an instance of this class to interact
+        with the archive/tahoe/analytics/report db.
+    """
+    
+    return _get_backend(filename, db='report')
 
 def get_tahoe_backend(filename='config.json'):
-    return get_backend(filename, db='tahoe')
+    """
+    Get archive/analytics/tahoe backend.
+
+    Archive DB is the main storage of CYBEX-P. Use a tahoe_backend
+    object to interact with the archive DB. tahoe_backend is
+    also known as analytics_backend and archive_backend. So it is
+    important that the have the same URL in the config file. See
+    the CYBEX-P system architecture diagram to know more about
+    archive DB.
+
+    Parameters
+    ----------
+    filename : str
+        Relative or absolute path of config file.
+        
+
+    Returns
+    -------
+    backend : tahoe.backend.MongoBackend
+        Data storage. Inherits pymongo.Collection and
+        tahoe.Backend. Use an instance of this class to interact
+        with the archive/tahoe/analytics/report db.
+    """
+    
+    return _get_backend(filename, db='tahoe')
 
 
-def get_identity_backend(filename='config.json', db='identity'):
-    identityconfig = get_config(filename, db)
-    mongo_url = identityconfig['mongo_url']
-    dbname = identityconfig['db']
-    collname = identityconfig['coll']
+def get_identity_backend(filename='config.json'):
+    """
+    Get identity backend.
+
+    Identity Backend is a different class in TAHOE than MongoBackend.
+    The entire identity Module is intentionally kept separate as
+    a plugin rather than a part of core TAHOE library.
+
+    Parameters
+    ----------
+    filename : str
+        Relative or absolute path of config file.
+        
+
+    Returns
+    -------
+    backend : tahoe.identity.backend.IdentityBackend
+        Data storage. Inherits pymongo.Collection and
+        tahoe.MongoBackend. Use an instance of this class to interact
+        with the identity db.
+    """
+    
+    idenityconfig = get_config(filename, 'identity')
+    mongo_url = idenityconfig['mongo_url']
+    dbname = idenityconfig['db']
+    collname = idenityconfig['coll']
     backend = tahoe.identity.IdentityBackend(mongo_url, dbname, collname)
     return backend
+
+
+
+
+
+
 
 
 

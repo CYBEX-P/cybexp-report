@@ -4,6 +4,7 @@
 *.ini
 priv.pem
 Rubbish/
+demo_config.json
 
 # ================ Data/Log Files ================
 *.json
