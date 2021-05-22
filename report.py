@@ -112,7 +112,7 @@ def get_dtrange(from_=None, to=None, last=None, tzname=None):
         try:
             end = float(to)
         except ValueError:
-            end = parse_time(end)
+            end = parse_time(to)
             end = tz.localize(end).astimezone(utc).timestamp()
         except ValueError:
             raise InvalidParameterValue(f"Invalid 'to'={to}!")
@@ -151,10 +151,13 @@ schema_qdata = {
     "properties": {
         "sub_type": {"enum": [
             "asn",
+            "body",
             "domain",
             "email_addr",
             "filename",
+            "hostname",
             "sha256",
+            "subject",
             "ip",
             "ipv4",
             "url"
@@ -343,8 +346,6 @@ def main():
             # Consumer
             with ThreadPoolExecutor(64) as executor:
                 executor.map(process_query, iter(queue.get, None))
-
-##            process_query(queue.get())
 
         except (KeyboardInterrupt, SystemExit):
             raise

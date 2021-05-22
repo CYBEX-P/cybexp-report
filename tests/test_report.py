@@ -92,6 +92,15 @@ class GetDtRangeTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             start, end = get_dtrange(last='678sec')
 
+    def test_08_from_to_tzname(self):
+        from_ = "2020/05/21 02:00am"
+        to = "2021/05/21 02:00am"
+        tzname = "America/Los_Angeles"
+        start, end = get_dtrange(from_, to, None, tzname)
+        self.assertEqual(start, 1590051600.0)
+        self.assertEqual(end, 1621587600.0)
+        
+
 
 class BaseReportTest(unittest.TestCase):
 
