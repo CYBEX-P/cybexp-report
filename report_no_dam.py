@@ -20,21 +20,19 @@ from Crypto.Cipher import AES, PKCS1_OAEP
 
 from tahoe import Instance, Attribute, Object, Event, \
      Raw, Report, parse
-from tahoe.identity import User
 from tahoe.misc import decanonical
-from tahoe.backend.dam import DamBackend
 
 if __name__ in ["__main__", "__mp_main__", "report"]:
-    from exceptions import *
+    from exceptions import InvalidParameterValue
 else:
-    from .exceptions import *
+    from .exceptions import InvalidParameterValue
 
 import loadconfig
 
 
 # Logging
 # -------
-##logging.basicConfig(filename = 'report.log') 
+logging.basicConfig(filename = 'report.log') 
 logging.basicConfig(level=logging.DEBUG,
     format='\n\n%(asctime)s %(levelname)s: File %(filename)s,' \
         ' line %(lineno)s in %(funcName)s \n%(message)s')
@@ -47,13 +45,12 @@ _P = {'_id':0}
 API_HOST = None
 
 
-def configure(api_host, tahoe_backend, report_backend, identity_backend):
+def configure(api_host, tahoe_backend, report_backend):
     global API_HOST
 
     API_HOST = api_host
     Instance._backend = tahoe_backend
     Report._backend = report_backend
-    User._backend = identity_backend
 
 
 def get_dtrange(from_=None, to=None, last=None, tzname=None):
@@ -239,22 +236,16 @@ def get_report(tdql):
 
         start, end = get_dtrange(from_, to, last, tzname)
 
-        user = User._backend.find_user(_hash=tdql.userid, parse=True)
-        if user is None:
-            raise InvalidUserError("User does not exist in identity db!")
-        _dam = DamBackend(user, Instance._backend)
-
         # Count
         if tdql.qtype == 'count':
-            a = Attribute(sub_type, data)
-            a._backend = _dam
+            a = Attribute(sub_type, data) 
             rep_data = a.count(start=start, end=end, category=category,
                                context=context, limit=100)
 
         # Related
         elif tdql.qtype == 'related':
             a = Attribute(sub_type, data)
-            a._backend = _dam
+            
             rep_data, current_page, next_page = \
                 a.related(itype=return_type, level=level,
                           start=start, end=end, page=page,
@@ -270,7 +261,7 @@ def get_report(tdql):
         else:
             raise InvalidParameterValue(f"Invalid query type = {tdql.qtype}!")
 
-    except (ValidationError, InvalidParameterValue, InvalidUserError) as e:
+    except (ValidationError, InvalidParameterValue) as e:
         status = 'failed'
         rep_data = f"{repr(e)}! -- {str(e)}"
   
@@ -368,9 +359,8 @@ if __name__ == "__main__":
     api_host = loadconfig.get_api_config()['host']
     instance_backend = loadconfig.get_tahoe_backend()
     report_backend = loadconfig.get_report_backend()
-    identity_backend = loadconfig.get_identity_backend()
 
-    configure(api_host, instance_backend, report_backend, identity_backend)
+    configure(api_host, instance_backend, report_backend)
 
     main()
 

@@ -1,6 +1,6 @@
 """unittests for report.report.py"""
 
-import builtins as b
+import builtins as B
 import hashlib
 import json
 import pdb
@@ -11,6 +11,8 @@ import tahoe
 from tahoe import TDQL
 from tahoe.backend import NoBackend
 from tahoe.tests.test_backend import MongoBackendTest
+from tahoe.tests.identity.test_backend import setUpBackend as setUpIdBackend
+from tahoe.identity import User, Org
 
 if __name__ != 'report.tests.test_report':
     import os, sys
@@ -28,13 +30,18 @@ def setUpModule():
     api_host = ''
     tahoe_backend = MongoBackendTest.setUpClass(dbname='tahoe_db')
     report_backend = MongoBackendTest.setUpClass(dbname='report_db')
-    configure(api_host, tahoe_backend, report_backend)
+    identity_backend = setUpIdBackend()
+    configure(api_host, tahoe_backend, report_backend, identity_backend)
+
+    Org.set_backend(identity_backend)
 
     assert API_HOST is None
     assert Instance._backend is tahoe_backend
     assert Attribute._backend is tahoe_backend
     assert Event._backend is tahoe_backend
     assert Report._backend is report_backend
+    assert User._backend is identity_backend
+    assert Org._backend is identity_backend
     
 
 def tearDownModule():
@@ -114,27 +121,28 @@ class BaseReportTest(unittest.TestCase):
 class GetReportCountTest(BaseReportTest):
     @classmethod
     def setUpClass(cls):
-        b.afn = Attribute('filename', 'virus.exe')
+        B.afn = Attribute('filename', 'virus.exe')
         
-        b.orgid = 'test_orgid'
-        
+        B.u1 = User('user1@example.com')
+        B.o1 = Org('org1', u1, u1)
+
+        qtype = 'count'
         qdata = {"sub_type": "filename", "data": "virus.exe"}
         qdata, qhash = cls.json_2_canon(qdata)
-        qtype = 'count'
-        userid = 'test_userid'
-        b.tdql = TDQL(qtype, qdata, qhash, userid, False)
+        
+        B.tdql = TDQL(qtype, qdata, qhash, u1._hash, False)
 
     @classmethod
     def tearDownClass(cls):
-        del b.afn, b.orgid, b.tdql
+        del B.afn, B.u1, B.o1, B.tdql
 
     def test_01_count_one(self):
-        e = Event('file_download', afn, orgid, 100)
+        e = Event('file_download', afn, o1._hash, 100)
         r = get_report(tdql)
         self.assertEqual(r.doc['data'], 1)
 
     def test_02_count_multiple(self):
-        Event('file_download', afn, orgid, 200)
+        Event('file_download', afn, o1._hash, 200)
         r = get_report(tdql)
         self.assertEqual(r.doc['data'], 2)
 
