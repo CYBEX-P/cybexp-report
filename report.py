@@ -20,7 +20,7 @@ from Crypto.Cipher import AES, PKCS1_OAEP
 
 from tahoe import Instance, Attribute, Object, Event, \
      Raw, Report, parse
-from tahoe.identity import User
+from tahoe.identity import Identity, User
 from tahoe.misc import decanonical
 from tahoe.backend.dam import DamBackend
 
@@ -47,13 +47,17 @@ _P = {'_id':0}
 API_HOST = None
 
 
-def configure(api_host, tahoe_backend, report_backend, identity_backend):
+def configure(api_host, tahoe_backend, report_backend,
+              identity_backend, identity_secret="secret"):
+
     global API_HOST
 
     API_HOST = api_host
     Instance._backend = tahoe_backend
     Report._backend = report_backend
-    User._backend = identity_backend
+    Identity._backend = identity_backend
+    Identity.secret = secret
+    
 
 
 def get_dtrange(from_=None, to=None, last=None, tzname=None):
@@ -368,9 +372,10 @@ if __name__ == "__main__":
     api_host = loadconfig.get_api_config()['host']
     instance_backend = loadconfig.get_tahoe_backend()
     report_backend = loadconfig.get_report_backend()
-    identity_backend = loadconfig.get_identity_backend()
+    identity_backend, identity_secret = loadconfig.get_identity_backend()
 
-    configure(api_host, instance_backend, report_backend, identity_backend)
+    configure(api_host, instance_backend, report_backend,
+              identity_backend, identity_secret)
 
     main()
 

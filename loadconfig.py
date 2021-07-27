@@ -2,7 +2,7 @@
 Functions to initilize tahoe backends, initilize cache DB
 and parse api config.
 
-Updated: 5/19/2021 05:39
+Updated: 4/13/2021 05:39
 """
 
 import collections.abc
@@ -25,10 +25,8 @@ default = {
     },
     "api": {
         "url": "http://localhost:5000/",
+        "token": "",
         "host" : "localhost",
-        "port" : 5000,
-        "protocol": "http",
-        "token": ""
     },
     "archive": { 
         "mongo_url": "mongodb://localhost:27017/",
@@ -43,7 +41,8 @@ default = {
     "identity": {
         "mongo_url": "mongodb://localhost:27017/",
         "db": "identity_db",
-        "coll": "instance"
+        "coll": "instance",
+        "secret": "secret"
     },
     "report": {
         "mongo_url": "mongodb://localhost:27017/",
@@ -112,7 +111,7 @@ def get_config(filename='config.json', db='all'):
     return config
 
 
-def get_api_config(filename='config.json'):
+def get_api(filename='config.json'):
     """
     Get API config from config file.
 
@@ -123,20 +122,16 @@ def get_api_config(filename='config.json'):
 
     Returns
     -------
-    apiconfig : dict
-        Contains the following keys.
-    host : str
-        Hostname of the api (e.g. `localhost`).
-    protocol : str
-        http or https.
+    url : str
+        Complete URL of the API like `protocol://host:port`.
     token : str
         JWT token to authenticate with the API.
-    url : str
-        Complete URL of the API like `protocol://host:port`.    
+    host : str
+        Hostname of the api (e.g. `localhost`).
     """
         
-    api_config = get_config(filename, 'api')
-    return api_config
+    apiconfig = get_config(filename, 'api')
+    return apiconfig['url'], apiconfig['token'], apiconfig['host']
 
 
 def get_cache_db(filename='config.json'):
@@ -335,7 +330,10 @@ def get_identity_backend(filename='config.json'):
     dbname = idenityconfig['db']
     collname = idenityconfig['coll']
     backend = tahoe.identity.IdentityBackend(mongo_url, dbname, collname)
-    return backend
+
+    secret = idenityconfig.get('secret', "secret")
+
+    return backend, secret
 
 
 
