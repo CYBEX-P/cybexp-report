@@ -1,3 +1,8 @@
+# ========= Config and Key Files =============
+config/
+*config.json
+*.pem
+
 # ================ MY Files ================
 *.bat
 *playpen.py
