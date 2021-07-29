@@ -111,7 +111,7 @@ def get_config(filename='config.json', db='all'):
     return config
 
 
-def get_api(filename='config.json'):
+def get_api_config(filename='config.json'):
     """
     Get API config from config file.
 
@@ -131,7 +131,8 @@ def get_api(filename='config.json'):
     """
         
     apiconfig = get_config(filename, 'api')
-    return apiconfig['url'], apiconfig['token'], apiconfig['host']
+##    return apiconfig['url'], apiconfig['token'], apiconfig['host']
+    return apiconfig
 
 
 def get_cache_db(filename='config.json'):
