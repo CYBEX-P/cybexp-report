@@ -56,7 +56,7 @@ def configure(api_host, tahoe_backend, report_backend,
     Instance._backend = tahoe_backend
     Report._backend = report_backend
     Identity._backend = identity_backend
-    Identity.secret = secret
+    Identity.secret = identity_secret
     
 
 
