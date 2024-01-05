@@ -3,7 +3,7 @@ decorator==4.4.2
 jsonschema==3.2.0
 mongomock==3.21.0
 networkx==2.5.1
-pycryptodome==3.9.8
+pycryptodome==3.19.1
 pyjwt==1.7.1
 pymongo==3.11.0
 pyrsistent==0.17.3
